@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.edwon.physicsrigtools": "https://github.com/edwonedwon/Unity-Physics-Rig-Tools.git",
+    "com.edwon.physicsrigtools": "https://github.com/edwonedwon/Unity-Physics-Rig-Tools.git#1.0.5",
     "com.edwon.tools": "https://github.com/edwonedwon/Unity-Tools.git#1.2.0",
     "com.thatcosmonaut.stately": "https://gitlab.com/Edwon/stately.git?path=/UnityPackage/Packages/Stately#1.0.3",
     "com.unity.ai.navigation": "2.0.4",
