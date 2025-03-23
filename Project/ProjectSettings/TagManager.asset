@@ -37,6 +37,8 @@ TagManager:
   - plus
   - ex
   - prop
+  - medium
+  - hot
   layers:
   - Default
   - TransparentFX
