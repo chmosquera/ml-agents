@@ -8,6 +8,8 @@ using UnityEngine.UIElements;
 public class SittingAgent : Agent
 {
     [Range(0, 0.3f)] public float movementFacingSmooth;
+    [Range(0, 1f)] public float squatSpeed = 1f;
+
 
     [Header("Environment")]
     /// <summary>
@@ -33,11 +35,13 @@ public class SittingAgent : Agent
     /// Detects when the agent touches the block.
     /// </summary>
     [HideInInspector] public SittableDetect sittableDetect;
+    public Transform pelvicTransform;
+    [FormerlySerializedAs("pelvicOriginalPosition")] public Vector3 m_pelvicOriginalPosition;
 
     public RandomizeAssetPlacement assetPlacer;
     public bool useVectorObs;
 
-    [Header("Debug")] 
+    [Header("Debug")]
     public TMPro.TextMeshProUGUI rewardText; // Assign in inspector
     public bool showDebugGUI = true;
     public bool verboseLogging = true; // Set to true for detailed logs
@@ -54,7 +58,7 @@ public class SittingAgent : Agent
 
     EnvironmentParameters m_ResetParams;
 
-    [Header("Internal Variables")] 
+    [Header("Internal Variables")]
     private Vector3 positionTarget;
     private Vector3 positionLast;
     private Vector3 positionVelocity;
@@ -66,14 +70,14 @@ public class SittingAgent : Agent
 
     // Variable to track proximity-based reward scaling
     private float closerScalar = 0.1f; // Default scaling factor
-    
+
     // Track if agent is in different proximity zones
     private bool isInMediumZone = false;
     private bool isInHotZone = false;
-    
+
     // Flag to prevent multiple episode endings
     private bool isEpisodeEnding = false;
-    
+
     // For debugging - track episode and step count
     private int episodeCount = 0;
     private float lastRewardValue = 0f;
@@ -83,12 +87,13 @@ public class SittingAgent : Agent
         base.Awake();
         DebugLog("Awake", "SittingAgent is initializing");
         m_PushBlockSettings = FindObjectOfType<PushBlockSettings>();
+        m_pelvicOriginalPosition = pelvicTransform.localPosition;
     }
 
     public override void Initialize()
     {
         DebugLog("Initialize", "Starting agent initialization");
-        
+
         sittableDetect = block.GetComponent<SittableDetect>();
         sittableDetect.agent = this;
 
@@ -133,24 +138,24 @@ public class SittingAgent : Agent
         var foundNewSpawnLocation = false;
         var randomSpawnPos = Vector3.zero;
         var attempts = 0;
-        
+
         // Define an appropriate height above ground
         float spawnHeight = 0.1f;
-        
+
         while (foundNewSpawnLocation == false && attempts < 100)
         {
             attempts++;
-            
+
             // Get random X and Z coordinates
             var randomPosX = Random.Range(-areaBounds.extents.x * m_PushBlockSettings.spawnAreaMarginMultiplier,
                 areaBounds.extents.x * m_PushBlockSettings.spawnAreaMarginMultiplier);
             var randomPosZ = Random.Range(-areaBounds.extents.z * m_PushBlockSettings.spawnAreaMarginMultiplier,
                 areaBounds.extents.z * m_PushBlockSettings.spawnAreaMarginMultiplier);
-            
+
             // Create position using ground's X,Z with consistent Y height
             Vector3 groundPosition = ground.transform.position;
             randomSpawnPos = new Vector3(groundPosition.x + randomPosX, groundPosition.y + spawnHeight, groundPosition.z + randomPosZ);
-            
+
             // Optional: Use raycast to find the exact ground height at this X,Z coordinate
             // This ensures proper placement even on uneven terrain
             RaycastHit hit;
@@ -159,7 +164,7 @@ public class SittingAgent : Agent
                 // Use the hit point's Y value plus a small offset for the agent's height
                 randomSpawnPos = new Vector3(randomSpawnPos.x, hit.point.y + spawnHeight, randomSpawnPos.z);
             }
-            
+
             // Check if the position is valid (no collisions)
             if (Physics.CheckBox(randomSpawnPos, new Vector3(2.5f, 0.01f, 2.5f)) == false)
             {
@@ -182,13 +187,13 @@ public class SittingAgent : Agent
     public void BlockTouched()
     {
         DebugLog("BlockTouched", "Agent touched block!");
-        
+
         if (isEpisodeEnding)
         {
             DebugLog("BlockTouched", "Ignoring block touch because episode is already ending");
             return;
         }
-        
+
         // We use a reward of 5 for touching the block
         float previousReward = GetCumulativeReward();
         AddReward(5f);
@@ -212,13 +217,13 @@ public class SittingAgent : Agent
     private void OnCollisionEnter(Collision collision)
     {
         DebugLog("OnCollisionEnter", $"Collision with {collision.gameObject.name}, tag: {collision.gameObject.tag}");
-        
+
         if (isEpisodeEnding)
         {
             DebugLog("OnCollisionEnter", "Ignoring collision because episode is already ending");
             return;
         }
-        
+
         // Check if the agent collided with a prop object
         if (collision.gameObject.CompareTag("prop"))
         {
@@ -226,27 +231,27 @@ public class SittingAgent : Agent
             float previousReward = GetCumulativeReward();
             AddReward(-1f);
             DebugLog("OnCollisionEnter", $"Prop collision penalty: -1.0, Previous: {previousReward}, New: {GetCumulativeReward()}");
-            
+
             Debug.Log($"<color=red>{transform.parent.name}: Hit prop! Penalty applied. Reward: </color>" + GetCumulativeReward());
-            
+
             // Check if the agent's reward has fallen below the threshold after this penalty
             CheckIfRewardBelowThreshold();
         }
     }
-    
+
     /// <summary>
     /// Track when agent enters the medium proximity zone - increases reward scaling
     /// </summary>
     private void OnTriggerEnter(Collider other)
     {
         DebugLog("OnTriggerEnter", $"Entered trigger: {other.name}, tag: {other.tag}");
-        
+
         if (isEpisodeEnding)
         {
             DebugLog("OnTriggerEnter", "Ignoring trigger entry because episode is already ending");
             return;
         }
-        
+
         // Check for medium proximity zone entry
         if (other.CompareTag("medium") && !isInMediumZone)
         {
@@ -254,7 +259,7 @@ public class SittingAgent : Agent
             isInMediumZone = true;
             closerScalar = 0.4f; // Increase reward scaling in medium zone
             DebugLog("OnTriggerEnter", $"Entered medium zone! Reward scaling changed from {oldScalar} to {closerScalar}");
-            
+
             Debug.Log($"<color=cyan>{transform.parent.name}: Entered medium zone! Reward scaling: {closerScalar}</color>");
         }
         // Check for hot zone entry (inner zone) - highest reward scaling
@@ -264,24 +269,24 @@ public class SittingAgent : Agent
             isInHotZone = true;
             closerScalar = 1.0f; // Maximum reward scaling in hot zone
             DebugLog("OnTriggerEnter", $"Entered hot zone! Reward scaling changed from {oldScalar} to {closerScalar}");
-            
+
             Debug.Log($"<color=green>{transform.parent.name}: Entered hot zone! Reward scaling: {closerScalar}</color>");
         }
     }
-    
+
     /// <summary>
     /// Track when agent exits proximity zones - adjusts reward scaling accordingly
     /// </summary>
     private void OnTriggerExit(Collider other)
     {
         DebugLog("OnTriggerExit", $"Exited trigger: {other.name}, tag: {other.tag}");
-        
+
         if (isEpisodeEnding)
         {
             DebugLog("OnTriggerExit", "Ignoring trigger exit because episode is already ending");
             return;
         }
-        
+
         // Handle exiting the hot zone
         if (other.CompareTag("hot") && isInHotZone)
         {
@@ -290,7 +295,7 @@ public class SittingAgent : Agent
             // If still in medium zone, use medium scaling, otherwise default
             closerScalar = isInMediumZone ? 0.4f : 0.1f;
             DebugLog("OnTriggerExit", $"Exited hot zone! Reward scaling changed from {oldScalar} to {closerScalar}");
-            
+
             Debug.Log($"<color=yellow>{transform.parent.name}: Exited hot zone! Reward scaling: {closerScalar}</color>");
         }
         // Handle exiting the medium zone
@@ -301,11 +306,11 @@ public class SittingAgent : Agent
             // If somehow still in hot zone, keep high scaling (shouldn't happen with proper collider setup)
             closerScalar = isInHotZone ? 1.0f : 0.1f;
             DebugLog("OnTriggerExit", $"Exited medium zone! Reward scaling changed from {oldScalar} to {closerScalar}");
-            
+
             Debug.Log($"<color=orange>{transform.parent.name}: Exited medium zone! Reward scaling: {closerScalar}</color>");
         }
     }
-    
+
     /// <summary>
     /// Safely ends the episode to prevent multiple calls to EndEpisode()
     /// </summary>
@@ -319,14 +324,14 @@ public class SittingAgent : Agent
 
         isEpisodeEnding = true;
         Debug.Log($"<color=green>** SafeEndEpisode! - Ending episode. Reason: {reason}</color>");
-        
+
         // Stop all coroutines to prevent any ongoing processes
         StopAllCoroutines();
-        
+
         // Call the actual EndEpisode method
         EndEpisode();
     }
-    
+
     /// <summary>
     /// Checks if the cumulative reward has fallen below the threshold (-1.5)
     /// If so, applies a large penalty and ends the episode
@@ -335,23 +340,23 @@ public class SittingAgent : Agent
     {
         float currentReward = GetCumulativeReward();
         DebugLog("CheckIfRewardBelowThreshold", $"Checking reward threshold: Current reward = {currentReward}");
-        
+
         if (isEpisodeEnding)
         {
             DebugLog("CheckIfRewardBelowThreshold", "Episode already ending, skipping check");
             return;
         }
-        
+
         if (currentReward < -1.5f)
         {
             DebugLog("CheckIfRewardBelowThreshold", $"Reward below threshold ({currentReward} < -1.5)! Applying severe penalty.");
-            
+
             float previousReward = GetCumulativeReward();
             AddReward(-10f);
             DebugLog("CheckIfRewardBelowThreshold", $"Added penalty: -10.0, Previous: {previousReward}, New: {GetCumulativeReward()}");
-            
+
             Debug.Log($"<color=red>{transform.parent.name}: Reward below threshold! Applying severe penalty.</color>");
-            
+
             SafeEndEpisode("Reward fell below threshold - applying penalty");
         }
     }
@@ -364,14 +369,14 @@ public class SittingAgent : Agent
         DebugLog("GoalScoredSwapGroundMaterial", "Starting material swap");
         m_GroundRenderer.material = mat;
         yield return new WaitForSeconds(time);
-        
+
         // Check if we've been destroyed during the wait
         if (this == null || m_GroundRenderer == null)
         {
             DebugLog("GoalScoredSwapGroundMaterial", "Object destroyed during coroutine! Aborting material swap.");
             yield break;
         }
-        
+
         m_GroundRenderer.material = m_GroundMaterial;
         DebugLog("GoalScoredSwapGroundMaterial", "Material swap complete");
     }
@@ -386,12 +391,14 @@ public class SittingAgent : Agent
             DebugLog("MoveAgent", "Skipping movement because episode is ending");
             return;
         }
-        
+
         var action = act[0];
-        DebugLog("MoveAgent", $"Processing action: {action}");
+        int squatAction = act[1];
+        DebugLog("MoveAgent", $"Processing moveAction: {action}; squatAction {squatAction}");
 
         float horizontal = 0f;
         float vertical = 0f;
+        float squat = 0f;
 
         switch (action)
         {
@@ -431,21 +438,47 @@ public class SittingAgent : Agent
                 ForceMode.VelocityChange);
         }
 
+        // SQUAT
+        switch (squatAction)
+        {
+            case 1:
+                squat += 1f;
+                break;
+            case 2:
+                squat -= 1f;
+                break;
+        }
+
+        var currentPelvisPosition = pelvicTransform.localPosition;
+
+        float newPelvisY = currentPelvisPosition.y + squat * squatSpeed * Time.deltaTime;
+        newPelvisY = Mathf.Clamp(newPelvisY, 0.25f, 0.83f);
+
+        var pelvisYChange = newPelvisY - currentPelvisPosition.y;
+
+        // Debug.Log($"<color=teal>Pelvis Y Change: {pelvisYChange:F4}</color>");
+
+        // Optional: Clamp the pelvis position to avoid unnatural movement
+        // newPelvisY = Mathf.Clamp(newPelvisY, minPelvisHeight, maxPelvisHeight);
+
+        pelvicTransform.localPosition = new Vector3(currentPelvisPosition.x, newPelvisY, currentPelvisPosition.z);
+
         // Update the rotation and position tracking
         UpdateRootPosition();
         UpdateRootRotation();
+        CalculatePelvisReward();
     }
 
     public void UpdateRootPosition()
     {
         if (isEpisodeEnding) return;
-        
+
         // Update movement delta from change in position
         movementDelta = transform.position - positionLast;
         movementDelta = Vector3.ProjectOnPlane(movementDelta, Vector3.up);
 
         positionLast = transform.position;
-        
+
         // Log if significant movement
         if (movementDelta.magnitude > 0.5f)
         {
@@ -456,7 +489,7 @@ public class SittingAgent : Agent
     void UpdateRootRotation()
     {
         if (isEpisodeEnding) return;
-        
+
         // Update rotation to face movement direction
         float movementDeltaMagnitude = movementDelta.magnitude;
         if (movementDeltaMagnitude > 0.01f)
@@ -464,11 +497,48 @@ public class SittingAgent : Agent
             movementDeltaNormalized = movementDelta.normalized;
             Vector3 movementDeltaSmooth = Vector3.SmoothDamp(transform.forward, movementDeltaNormalized,
                 ref movementDeltaVelocity, movementFacingSmooth);
-            
+
             DebugLog("UpdateRootRotation", $"Rotating to face direction: {movementDeltaSmooth}");
             m_AgentRb.MoveRotation(Quaternion.LookRotation(movementDeltaSmooth));
         }
     }
+
+    private void CalculatePelvisReward()
+    {
+
+    Vector3 pelvisDirection = pelvicTransform.forward;
+    float pelvisDotGoal = Vector3.Dot(pelvisDirection, (block.transform.position - transform.position).normalized);
+    float distanceToGoal = Vector3.Distance(transform.position, block.transform.position);
+
+    Debug.Log($"[PELVIS] Pelvis Direction: {pelvisDirection}, Pelvis Dot Goal: {pelvisDotGoal:F3}, Distance to Goal: {distanceToGoal:F3}");
+
+    // Check if pelvis direction is negative
+        if (pelvisDotGoal < 0)
+        {
+            if (!isInMediumZone && !isInHotZone)
+            {
+                // Outside medium and hot zones with negative pelvis direction => Negative reward
+                float negativeReward = -distanceToGoal * 0.1f; // Scale factor can be adjusted to tune the penalty
+                AddReward(negativeReward);
+                Debug.Log($"<color=red>Negative pelvis but far from goal. Penalty: {negativeReward:F3}</color>");
+            }
+            else if (isInMediumZone)
+            {
+                // In medium zone with negative pelvis direction => Positive reward
+                float mediumZoneReward = 0.5f; // Adjust this value for reward scaling
+                AddReward(mediumZoneReward);
+                Debug.Log($"<color=yellow>Negative pelvis and in medium zone. Reward: {mediumZoneReward:F3}</color>");
+            }
+            else if (isInHotZone)
+            {
+                // In hot zone with negative pelvis direction => Higher positive reward
+                float hotZoneReward = 1f; // Adjust value for reward scaling
+                AddReward(hotZoneReward);
+                Debug.Log($"<color=green>Negative pelvis and in hot zone. Reward: {hotZoneReward:F3}</color>");
+            }
+        }
+    }
+
 
     private void Update()
     {
@@ -477,7 +547,7 @@ public class SittingAgent : Agent
         {
             float currentReward = GetCumulativeReward();
             rewardText.text = $"Reward: {currentReward:F2} | Scaling: {closerScalar:F1} | Step: {StepCount}/{MaxStep}";
-            
+
             // Log significant reward changes
             if (Mathf.Abs(currentReward - lastRewardValue) > 0.5f)
             {
@@ -509,9 +579,9 @@ public class SittingAgent : Agent
             DebugLog("OnActionReceived", "Skipping action because episode is ending");
             return;
         }
-        
+
         DebugLog("OnActionReceived", $"Step {StepCount}: Processing action");
-        
+
         // Move the agent using the action.
         MoveAgent(actionBuffers.DiscreteActions);
 
@@ -520,16 +590,16 @@ public class SittingAgent : Agent
         if (lastDistanceToBlock != Vector3.zero)
         {
             float movingCloserReward = lastDistanceToBlock.magnitude - currentDistanceToBlock.magnitude;
-            
+
             // Apply the dynamic reward scaling based on which zone the agent is in
             float scaledReward = movingCloserReward * closerScalar;
             float prevReward = GetCumulativeReward();
             AddReward(scaledReward);
-            
-            DebugLog("OnActionReceived", 
+
+            DebugLog("OnActionReceived",
                 $"Distance change: {movingCloserReward:F3}, Scaled reward: {scaledReward:F3}, " +
                 $"Previous: {prevReward:F2}, New: {GetCumulativeReward():F2}");
-            
+
             // Debug info when reward scaling changes significantly
             if (scaledReward > 0.1f)
             {
@@ -543,9 +613,9 @@ public class SittingAgent : Agent
         float stepPenalty = -1f / MaxStep;
         float previousReward = GetCumulativeReward();
         AddReward(stepPenalty);
-        
+
         DebugLog("OnActionReceived", $"Step penalty: {stepPenalty:F5}, Previous: {previousReward:F2}, New: {GetCumulativeReward():F2}");
-        
+
         // Check if cumulative reward has fallen below threshold
         CheckIfRewardBelowThreshold();
 
@@ -554,7 +624,7 @@ public class SittingAgent : Agent
         {
             DebugLog("OnActionReceived", $"Approaching max steps: {StepCount}/{MaxStep}", LogType.Warning);
         }
-        
+
         if (StepCount == MaxStep - 1)
         {
             DebugLog("OnActionReceived", "Final step before max steps reached!", LogType.Warning);
@@ -610,17 +680,17 @@ public class SittingAgent : Agent
     {
         episodeCount++;
         Debug.Log($"Starting episode {episodeCount}");
-        
+
         // Reset ending flag
         isEpisodeEnding = false;
-        
+
         var rotation = Random.Range(0, 4);
         var rotationAngle = rotation * 90f;
         area.transform.Rotate(new Vector3(0f, rotationAngle, 0f));
         DebugLog("OnEpisodeBegin", $"Area rotated by {rotationAngle} degrees");
 
         ResetBlock();
-        
+
         if (assetPlacer != null)
         {
             DebugLog("OnEpisodeBegin", "Randomizing asset placement");
@@ -634,7 +704,7 @@ public class SittingAgent : Agent
         Vector3 agentSpawnPos = GetRandomSpawnPos();
         DebugLog("OnEpisodeBegin", $"Setting agent position to {agentSpawnPos}");
         transform.position = agentSpawnPos;
-        
+
         DebugLog("OnEpisodeBegin", "Resetting agent velocity");
         m_AgentRb.linearVelocity = Vector3.zero;
         m_AgentRb.angularVelocity = Vector3.zero;
@@ -644,11 +714,11 @@ public class SittingAgent : Agent
         isInHotZone = false;
         closerScalar = 0.1f;
         lastRewardValue = 0f;
-        
+
         lastDistanceToBlock = Vector3.zero;
         DebugLog("OnEpisodeBegin", "Setting reset parameters");
         SetResetParameters();
-        
+
         DebugLog("OnEpisodeBegin", $"Initial distance to block: {Vector3.Distance(transform.position, block.transform.position):F2}");
         DebugLog("OnEpisodeBegin", "Episode setup complete");
     }
@@ -658,17 +728,17 @@ public class SittingAgent : Agent
         // Reset parameters as needed
         DebugLog("SetResetParameters", "Reset parameters applied");
     }
-    
+
     /// <summary>
     /// Helper method for consistent debug logging
     /// </summary>
     private void DebugLog(string method, string message, LogType logType = LogType.Log)
     {
         if (!verboseLogging && logType == LogType.Log) return;
-        
+
         string agentName = transform.parent != null ? transform.parent.name : gameObject.name;
         string prefix = $"[{agentName}:{episodeCount}:{StepCount}] {method}: ";
-        
+
         switch (logType)
         {
             case LogType.Warning:
@@ -682,7 +752,7 @@ public class SittingAgent : Agent
                 break;
         }
     }
-    
+
     // Ensure we properly handle object destruction
     private void OnDestroy()
     {
