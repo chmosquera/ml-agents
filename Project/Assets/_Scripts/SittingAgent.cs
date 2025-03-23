@@ -232,11 +232,12 @@ public class SittingAgent : Agent
 
         Debug.Log($"<color=green>{transform.parent.name}: Successfully sat on block! Reward: </color>" + GetCumulativeReward());
 
+
         // Now we end the episode on successful sitting
         SafeEndEpisode("Butt sat on block - success!");
 
         // Swap material for visual feedback
-        StartCoroutine(GoalScoredSwapGroundMaterial(m_PushBlockSettings.goalScoredMaterial, 0.5f));
+        StartCoroutine(GoalScoredSwapGroundMaterial(m_PushBlockSettings.buttSitMaterial, 0.8f));
     }
 
     /// <summary>

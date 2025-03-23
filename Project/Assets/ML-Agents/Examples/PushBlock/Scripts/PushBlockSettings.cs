@@ -27,6 +27,8 @@ public class PushBlockSettings : MonoBehaviour
     /// </summary>
     public Material goalScoredMaterial;
 
+    public Material buttSitMaterial;
+
     /// <summary>
     /// When an agent fails, the ground will turn this material for a few seconds.
     /// </summary>
