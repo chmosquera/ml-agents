@@ -37,6 +37,9 @@ TagManager:
   - plus
   - ex
   - prop
+  - medium
+  - hot
+  - butt
   layers:
   - Default
   - TransparentFX
