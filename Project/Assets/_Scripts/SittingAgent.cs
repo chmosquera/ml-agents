@@ -318,7 +318,7 @@ public class SittingAgent : Agent
         }
 
         isEpisodeEnding = true;
-        Debug.Log("<color=green>** SafeEndEpisode", $"Ending episode. Reason: {reason}</color>");
+        Debug.Log($"<color=green>** SafeEndEpisode! - Ending episode. Reason: {reason}</color>");
         
         // Stop all coroutines to prevent any ongoing processes
         StopAllCoroutines();
