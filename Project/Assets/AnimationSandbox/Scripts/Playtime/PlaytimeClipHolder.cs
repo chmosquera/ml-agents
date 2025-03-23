@@ -9,12 +9,12 @@ public class PlaytimeClipHolder : MonoBehaviour
 
     void OnEnable()
     {
-        PlaytimeController.instance.clipHolders.Add(this);
+        // PlaytimeController.instance.clipHolders.Add(this);
     }
 
     void OnDisable()
     {
-        PlaytimeController.instance.clipHolders.Remove(this);
+        // PlaytimeController.instance.clipHolders.Remove(this);
     }
 
     public PlaytimeClip<TFrameDataType, TCurveType> GetClipForTime<TFrameDataType, TCurveType>(float time)
@@ -111,7 +111,7 @@ public class PlaytimeClipHolder : MonoBehaviour
             else { break; }
         }
 
-        while(targetIndex < clips.Count - 2 && 
+        while(targetIndex < clips.Count - 2 &&
             (clips[targetIndex + 1].ClipDuration < 0f || timelineTime >= clips[targetIndex + 1].StartTime + clips[targetIndex + 1].ClipDuration))
         {
             clips.RemoveAt(targetIndex + 1);

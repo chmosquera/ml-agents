@@ -1,0 +1,29 @@
+{
+    "PushBlock": {
+        "checkpoints": [
+            {
+                "steps": 6813,
+                "file_path": "results\\sitting-2\\PushBlock\\PushBlock-6813.onnx",
+                "reward": 2.2633583148320517,
+                "creation_time": 1742702758.665838,
+                "auxillary_file_paths": [
+                    "results\\sitting-2\\PushBlock\\PushBlock-6813.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 6813,
+            "file_path": "results\\sitting-2\\PushBlock.onnx",
+            "reward": 2.2633583148320517,
+            "creation_time": 1742702758.665838,
+            "auxillary_file_paths": [
+                "results\\sitting-2\\PushBlock\\PushBlock-6813.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.2.0.dev0",
+        "torch_version": "2.2.2+cu121"
+    }
+}
