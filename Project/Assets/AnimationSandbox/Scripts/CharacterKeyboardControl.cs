@@ -60,9 +60,36 @@ public class CharacterKeyboardControl : MonoBehaviour
 
     void HandleKeyboardInput()
     {
-        // Get input axes
-        float horizontal = Input.GetAxis("Horizontal");
-        float vertical = Input.GetAxis("Vertical");
+        // // Get input axes
+        // float horizontal = Input.GetAxis("Horizontal");
+        // float vertical = Input.GetAxis("Vertical");
+        //
+        //
+        // Use WASD input for movement
+        float horizontal = 0f;
+        float vertical = 0f;
+
+        if (Input.GetKey(KeyCode.W))
+        {
+            vertical += 1f;
+        }
+        if (Input.GetKey(KeyCode.S))
+        {
+            vertical -= 1f;
+        }
+        if (Input.GetKey(KeyCode.A))
+        {
+            horizontal -= 1f;
+        }
+        if (Input.GetKey(KeyCode.D))
+        {
+            horizontal += 1f;
+        }
+
+        // Normalize movement magnitude
+        Vector3 normalizedInput = new Vector3(horizontal, 0, vertical).normalized;
+        horizontal = normalizedInput.x;
+        vertical = normalizedInput.z;
 
         // Calculate movement direction relative to camera
         Vector3 cameraForward = mainCam.transform.forward;
@@ -72,34 +99,33 @@ public class CharacterKeyboardControl : MonoBehaviour
         cameraForward.Normalize();
         cameraRight.Normalize();
 
+
         // Calculate movement direction
         Vector3 moveDirection = (cameraForward * vertical + cameraRight * horizontal).normalized;
 
         // Calculate target position
-        Vector3 targetPosition = rootTransform.position + moveDirection * movementSpeed * Time.fixedDeltaTime;
+        Vector3 targetPosition = transform.position + moveDirection * movementSpeed *
+            Time.fixedDeltaTime;
 
         // Calculate angled raycast direction
-        Vector3 raycastDirection = Quaternion.Euler(groundRaycastAngle, 0, 0) * moveDirection;
+        Vector3 raycastDirection = Quaternion.Euler(45f, 0, 0) * moveDirection;
 
         // Check for collisions with angled raycast
         RaycastHit hit;
-        Vector3 rayStart = rootTransform.position + Vector3.up * capsuleCollider.height * 0.5f;
+        Vector3 rayStart = transform.position + Vector3.up * capsuleCollider.height * 0.5f;
 
         // Store debug information
-        debugRayStart = rayStart;
-        debugRayEnd = targetPosition;
-        debugHitSomething = Physics.Raycast(rayStart, raycastDirection, out hit, 10f, groundLayerMask);
+        bool hitSomething = Physics.Raycast(rayStart, raycastDirection, out hit, 10f, groundLayerMask);
 
-        if (debugHitSomething)
+        if (hitSomething)
         {
             positionTarget = hit.point;
             positionTarget.y = hit.point.y;
-            debugRayEnd = hit.point;
         }
         else
         {
             positionTarget = targetPosition;
-            positionTarget.y = rootTransform.position.y;
+            positionTarget.y = transform.position.y;
         }
     }
 
