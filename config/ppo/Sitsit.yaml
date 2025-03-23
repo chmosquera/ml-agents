@@ -1,0 +1,45 @@
+behaviors:
+  PushBlock:
+    trainer_type: ppo
+    hyperparameters:
+      # Increased batch size for more stable training with complex behaviors
+      batch_size: 256
+      # Increased buffer size to capture the full approach-and-sit sequence
+      buffer_size: 10240
+      # Slightly reduced learning rate for more stable learning of the sitting behavior
+      learning_rate: 0.0002
+      # Increased beta for better exploration of squatting actions
+      beta: 0.02
+      # Standard PPO clipping parameter
+      epsilon: 0.2
+      # Standard GAE parameter
+      lambd: 0.95
+      # Number of epochs to train on the same data
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: false
+      # Increased hidden units to handle the more complex task
+      hidden_units: 512
+      # Using deeper network for better learning of the sequential behavior
+      num_layers: 3
+      vis_encode_type: simple
+    reward_signals:
+      extrinsic:
+        # Higher gamma to value future rewards more (like the +50 for sitting)
+        gamma: 0.995
+        strength: 1.0
+      # Optional: Add curiosity to help with exploration
+      curiosity:
+        gamma: 0.995
+        strength: 0.1
+        encoding_size: 256
+        learning_rate: 0.0001
+    # Keep more checkpoints to ensure we catch good models
+    keep_checkpoints: 10
+    # Setting max steps for a complete training run (about 5-10 million is good for this task)
+    max_steps: 950000000
+    # Increased time horizon to better capture approach+sit sequence
+    time_horizon: 128
+    # More frequent summaries to monitor progress
+    summary_freq: 20000

@@ -10,7 +10,6 @@ public class SittingAgent : Agent
     [Range(0, 0.3f)] public float movementFacingSmooth;
     [Range(0, 1f)] public float squatSpeed = 1f;
 
-
     [Header("Environment")]
     /// <summary>
     /// The ground. The bounds are used to spawn the elements.
@@ -81,6 +80,10 @@ public class SittingAgent : Agent
     // For debugging - track episode and step count
     private int episodeCount = 0;
     private float lastRewardValue = 0f;
+
+    // Pelvis height limits
+    public float pelvisMin = 0.25f;
+    public float pelvisMax = 0.83f;
 
     protected override void Awake()
     {
@@ -194,21 +197,46 @@ public class SittingAgent : Agent
             return;
         }
 
-        // We use a reward of 5 for touching the block
+        // We now give a reward of 10 for touching the block but DON'T end the episode
         float previousReward = GetCumulativeReward();
-        AddReward(5f);
-        DebugLog("BlockTouched", $"Reward added: +5.0, Previous: {previousReward}, New: {GetCumulativeReward()}");
+        AddReward(10f);
+        DebugLog("BlockTouched", $"Reward added: +10.0, Previous: {previousReward}, New: {GetCumulativeReward()}");
 
         Debug.Log($"<color=yellow>{transform.parent.name}: Block touched! Reward: </color>" + GetCumulativeReward());
 
-        // By marking an agent as done AgentReset() will be called automatically.
-        SafeEndEpisode("Block touched - success!");
+        // We no longer end the episode here
+        // SafeEndEpisode("Block touched - success!");
 
-        // Only swap material if we're not already ending
-        if (!isEpisodeEnding)
+        // Still swap the material
+        StartCoroutine(GoalScoredSwapGroundMaterial(m_PushBlockSettings.goalScoredMaterial, 0.5f));
+    }
+
+    /// <summary>
+    /// Called when the butt trigger collides with the block - this is the success condition
+    /// This will be called from the ButtDetect class
+    /// </summary>
+    public void ButtSatOnBlock()
+    {
+        DebugLog("ButtSatOnBlock", "Butt sat on block!");
+
+        if (isEpisodeEnding)
         {
-            StartCoroutine(GoalScoredSwapGroundMaterial(m_PushBlockSettings.goalScoredMaterial, 0.5f));
+            DebugLog("ButtSatOnBlock", "Ignoring butt sitting because episode is already ending");
+            return;
         }
+
+        // We use a reward of 50 for sitting on the block
+        float previousReward = GetCumulativeReward();
+        AddReward(50f);
+        DebugLog("ButtSatOnBlock", $"Reward added: +50.0, Previous: {previousReward}, New: {GetCumulativeReward()}");
+
+        Debug.Log($"<color=green>{transform.parent.name}: Successfully sat on block! Reward: </color>" + GetCumulativeReward());
+
+        // Now we end the episode on successful sitting
+        SafeEndEpisode("Butt sat on block - success!");
+
+        // Swap material for visual feedback
+        StartCoroutine(GoalScoredSwapGroundMaterial(m_PushBlockSettings.goalScoredMaterial, 0.5f));
     }
 
     /// <summary>
@@ -240,7 +268,7 @@ public class SittingAgent : Agent
     }
 
     /// <summary>
-    /// Track when agent enters the medium proximity zone - increases reward scaling
+    /// Track when agent enters the medium/hot proximity zones - increases reward scaling
     /// </summary>
     private void OnTriggerEnter(Collider other)
     {
@@ -442,24 +470,24 @@ public class SittingAgent : Agent
         switch (squatAction)
         {
             case 1:
-                squat += 1f;
+                squat += 1f;  // Squat down
                 break;
             case 2:
-                squat -= 1f;
+                squat -= 1f;  // Stand up
                 break;
         }
 
         var currentPelvisPosition = pelvicTransform.localPosition;
 
-        float newPelvisY = currentPelvisPosition.y + squat * squatSpeed * Time.deltaTime;
-        newPelvisY = Mathf.Clamp(newPelvisY, 0.25f, 0.83f);
+        // Apply squat action - invert the direction so positive value lowers the pelvis (squats down)
+        float newPelvisY = currentPelvisPosition.y - squat * squatSpeed * Time.deltaTime;
+        newPelvisY = Mathf.Clamp(newPelvisY, pelvisMin, pelvisMax);
 
         var pelvisYChange = newPelvisY - currentPelvisPosition.y;
-
-        // Debug.Log($"<color=teal>Pelvis Y Change: {pelvisYChange:F4}</color>");
-
-        // Optional: Clamp the pelvis position to avoid unnatural movement
-        // newPelvisY = Mathf.Clamp(newPelvisY, minPelvisHeight, maxPelvisHeight);
+        if (Mathf.Abs(pelvisYChange) > 0.001f)
+        {
+            DebugLog("MoveAgent", $"Adjusting pelvis height: {currentPelvisPosition.y:F3} -> {newPelvisY:F3}");
+        }
 
         pelvicTransform.localPosition = new Vector3(currentPelvisPosition.x, newPelvisY, currentPelvisPosition.z);
 
@@ -505,40 +533,43 @@ public class SittingAgent : Agent
 
     private void CalculatePelvisReward()
     {
+        // Get normalized pelvis height (0 = fully squatted, 1 = standing)
+        float pelvisHeightNormalized = Mathf.InverseLerp(pelvisMin, pelvisMax, pelvicTransform.localPosition.y);
 
-    Vector3 pelvisDirection = pelvicTransform.forward;
-    float pelvisDotGoal = Vector3.Dot(pelvisDirection, (block.transform.position - transform.position).normalized);
-    float distanceToGoal = Vector3.Distance(transform.position, block.transform.position);
+        // Distance to chair/block
+        float distanceToChair = Vector3.Distance(transform.position, block.transform.position);
+        float maxRewardDistance = 2.0f; // Adjust based on your environment scale
 
-    Debug.Log($"[PELVIS] Pelvis Direction: {pelvisDirection}, Pelvis Dot Goal: {pelvisDotGoal:F3}, Distance to Goal: {distanceToGoal:F3}");
+        // Calculate distance factor (1 when very close, 0 when far)
+        float proximityFactor = Mathf.Clamp01(1.0f - (distanceToChair / maxRewardDistance));
 
-    // Check if pelvis direction is negative
-        if (pelvisDotGoal < 0)
+        // When close to chair: reward squatting (lower pelvis)
+        // When far from chair: reward standing (higher pelvis)
+        float squatReward = 0;
+
+        if (isInHotZone)
         {
-            if (!isInMediumZone && !isInHotZone)
-            {
-                // Outside medium and hot zones with negative pelvis direction => Negative reward
-                float negativeReward = -distanceToGoal * 0.1f; // Scale factor can be adjusted to tune the penalty
-                AddReward(negativeReward);
-                Debug.Log($"<color=red>Negative pelvis but far from goal. Penalty: {negativeReward:F3}</color>");
-            }
-            else if (isInMediumZone)
-            {
-                // In medium zone with negative pelvis direction => Positive reward
-                float mediumZoneReward = 0.5f; // Adjust this value for reward scaling
-                AddReward(mediumZoneReward);
-                Debug.Log($"<color=yellow>Negative pelvis and in medium zone. Reward: {mediumZoneReward:F3}</color>");
-            }
-            else if (isInHotZone)
-            {
-                // In hot zone with negative pelvis direction => Higher positive reward
-                float hotZoneReward = 1f; // Adjust value for reward scaling
-                AddReward(hotZoneReward);
-                Debug.Log($"<color=green>Negative pelvis and in hot zone. Reward: {hotZoneReward:F3}</color>");
-            }
+            // In hot zone - strongly reward squatting
+            // More reward the lower the pelvis is
+            squatReward = (1.0f - pelvisHeightNormalized) * 0.1f;
+            Debug.Log($"<color=green>Hot zone squat reward: {squatReward:F3}, height: {pelvisHeightNormalized:F2}</color>");
         }
-    }
+        else if (isInMediumZone)
+        {
+            // In medium zone - moderately reward squatting
+            squatReward = (1.0f - pelvisHeightNormalized) * 0.05f;
+            Debug.Log($"<color=yellow>Medium zone squat reward: {squatReward:F3}, height: {pelvisHeightNormalized:F2}</color>");
+        }
+        else
+        {
+            // Far from chair - penalize squatting
+            // More penalty the lower the pelvis is
+            squatReward = pelvisHeightNormalized * 0.02f - 0.01f;
+            Debug.Log($"<color=red>Far from chair - stand up reward: {squatReward:F3}, height: {pelvisHeightNormalized:F2}</color>");
+        }
 
+        AddReward(squatReward);
+    }
 
     private void Update()
     {
@@ -546,7 +577,8 @@ public class SittingAgent : Agent
         if (rewardText != null)
         {
             float currentReward = GetCumulativeReward();
-            rewardText.text = $"Reward: {currentReward:F2} | Scaling: {closerScalar:F1} | Step: {StepCount}/{MaxStep}";
+            float pelvisHeightPercent = Mathf.InverseLerp(pelvisMin, pelvisMax, pelvicTransform.localPosition.y) * 100f;
+            rewardText.text = $"Reward: {currentReward:F2} | Scaling: {closerScalar:F1} | Squat: {100-pelvisHeightPercent:F0}% | Step: {StepCount}/{MaxStep}";
 
             // Log significant reward changes
             if (Mathf.Abs(currentReward - lastRewardValue) > 0.5f)
@@ -562,10 +594,13 @@ public class SittingAgent : Agent
         if (showDebugGUI)
         {
             float currentReward = GetCumulativeReward();
+            float pelvisHeightPercent = Mathf.InverseLerp(pelvisMin, pelvisMax, pelvicTransform.localPosition.y) * 100f;
+
             GUI.Label(new Rect(10, 10, 300, 20), $"Agent: {name}, Episode: {episodeCount}, Ending: {isEpisodeEnding}");
             GUI.Label(new Rect(10, 30, 300, 20), $"Reward: {currentReward:F2}, Zone Scale: {closerScalar:F1}");
             GUI.Label(new Rect(10, 50, 300, 20), $"Steps: {StepCount}/{MaxStep}, Zones: Medium:{isInMediumZone}, Hot:{isInHotZone}");
             GUI.Label(new Rect(10, 70, 300, 20), $"Distance to Block: {Vector3.Distance(transform.position, block.transform.position):F2}");
+            GUI.Label(new Rect(10, 90, 300, 20), $"Pelvis Height: {pelvisHeightPercent:F1}% (min:{pelvisMin}, max:{pelvisMax})");
         }
     }
 
@@ -632,28 +667,27 @@ public class SittingAgent : Agent
         }
     }
 
-
     public override void Heuristic(in ActionBuffers actionsOut)
     {
         var discreteActionsOut = actionsOut.DiscreteActions;
-        discreteActionsOut[0] = 0; // Default to "do nothing"
 
+        // Movement (Branch 0)
+        discreteActionsOut[0] = 0; // Default: no movement
         if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
-        {
             discreteActionsOut[0] = 1; // Forward
-        }
         else if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
-        {
             discreteActionsOut[0] = 2; // Backward
-        }
         else if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
-        {
             discreteActionsOut[0] = 3; // Left
-        }
         else if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
-        {
             discreteActionsOut[0] = 4; // Right
-        }
+
+        // Squatting (Branch 1)
+        discreteActionsOut[1] = 0; // Default: no squat change
+        if (Input.GetKey(KeyCode.Q)) // Squat down
+            discreteActionsOut[1] = 1;
+        else if (Input.GetKey(KeyCode.E)) // Stand up
+            discreteActionsOut[1] = 2;
     }
 
     /// <summary>
@@ -664,12 +698,6 @@ public class SittingAgent : Agent
         DebugLog("ResetBlock", "Resetting block position");
         // Get a random position for the block.
         block.transform.position = GetRandomSpawnPos();
-
-        // // Reset block velocity back to zero.
-        // m_BlockRb.linearVelocity = Vector3.zero;
-
-        // // Reset block angularVelocity back to zero.
-        // m_BlockRb.angularVelocity = Vector3.zero;
     }
 
     /// <summary>
@@ -708,6 +736,11 @@ public class SittingAgent : Agent
         DebugLog("OnEpisodeBegin", "Resetting agent velocity");
         m_AgentRb.linearVelocity = Vector3.zero;
         m_AgentRb.angularVelocity = Vector3.zero;
+
+        // Reset pelvis to standing position
+        Vector3 resetPelvisPos = pelvicTransform.localPosition;
+        resetPelvisPos.y = pelvisMax; // Default to standing up
+        pelvicTransform.localPosition = resetPelvisPos;
 
         // Reset zone trackers and reward scaling
         isInMediumZone = false;
