@@ -2,49 +2,58 @@
     "PushBlock": {
         "checkpoints": [
             {
-                "steps": 405,
-                "file_path": "results\\sitting-5\\PushBlock\\PushBlock-405.onnx",
-                "reward": -9.604361847043037,
-                "creation_time": 1742715931.4793804,
+                "steps": 999950,
+                "file_path": "results\\sitting-5\\PushBlock\\PushBlock-999950.onnx",
+                "reward": 282.0172407417408,
+                "creation_time": 1742722911.664722,
                 "auxillary_file_paths": [
-                    "results\\sitting-5\\PushBlock\\PushBlock-405.pt"
+                    "results\\sitting-5\\PushBlock\\PushBlock-999950.pt"
                 ]
             },
             {
-                "steps": 2549,
-                "file_path": "results\\sitting-5\\PushBlock\\PushBlock-2549.onnx",
-                "reward": -7.899130377631921,
-                "creation_time": 1742716913.8887925,
+                "steps": 1499988,
+                "file_path": "results\\sitting-5\\PushBlock\\PushBlock-1499988.onnx",
+                "reward": 239.20057971726942,
+                "creation_time": 1742725247.3384883,
                 "auxillary_file_paths": [
-                    "results\\sitting-5\\PushBlock\\PushBlock-2549.pt"
+                    "results\\sitting-5\\PushBlock\\PushBlock-1499988.pt"
                 ]
             },
             {
-                "steps": 12149,
-                "file_path": "results\\sitting-5\\PushBlock\\PushBlock-12149.onnx",
-                "reward": null,
-                "creation_time": 1742717079.7298386,
+                "steps": 1969254,
+                "file_path": "results\\sitting-5\\PushBlock\\PushBlock-1969254.onnx",
+                "reward": 240.18563554932675,
+                "creation_time": 1742727693.7261343,
                 "auxillary_file_paths": [
-                    "results\\sitting-5\\PushBlock\\PushBlock-12149.pt"
+                    "results\\sitting-5\\PushBlock\\PushBlock-1969254.pt"
                 ]
             },
             {
-                "steps": 63606,
-                "file_path": "results\\sitting-5\\PushBlock\\PushBlock-63606.onnx",
-                "reward": -2.4331447096431957,
-                "creation_time": 1742717795.1227612,
+                "steps": 1999957,
+                "file_path": "results\\sitting-5\\PushBlock\\PushBlock-1999957.onnx",
+                "reward": 290.4864191975802,
+                "creation_time": 1742739568.0098774,
                 "auxillary_file_paths": [
-                    "results\\sitting-5\\PushBlock\\PushBlock-63606.pt"
+                    "results\\sitting-5\\PushBlock\\PushBlock-1999957.pt"
+                ]
+            },
+            {
+                "steps": 2388977,
+                "file_path": "results\\sitting-5\\PushBlock\\PushBlock-2388977.onnx",
+                "reward": 387.4375818310992,
+                "creation_time": 1742741273.493417,
+                "auxillary_file_paths": [
+                    "results\\sitting-5\\PushBlock\\PushBlock-2388977.pt"
                 ]
             }
         ],
         "final_checkpoint": {
-            "steps": 63606,
+            "steps": 2388977,
             "file_path": "results\\sitting-5\\PushBlock.onnx",
-            "reward": -2.4331447096431957,
-            "creation_time": 1742717795.1227612,
+            "reward": 387.4375818310992,
+            "creation_time": 1742741273.493417,
             "auxillary_file_paths": [
-                "results\\sitting-5\\PushBlock\\PushBlock-63606.pt"
+                "results\\sitting-5\\PushBlock\\PushBlock-2388977.pt"
             ]
         }
     },
