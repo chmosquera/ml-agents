@@ -3020,9 +3020,11 @@ MonoBehaviour:
     m_Extent: {x: 0, y: 0, z: 0}
   block: {fileID: 0}
   sittableDetect: {fileID: 0}
+  assetPlacer: {fileID: 0}
   useVectorObs: 0
   rewardText: {fileID: 0}
   showDebugGUI: 1
+  verboseLogging: 1
 --- !u!1 &2681834252316484369
 GameObject:
   m_ObjectHideFlags: 0
@@ -4764,6 +4766,59 @@ Transform:
   m_Children: []
   m_Father: {fileID: 115960053039670291}
   m_LocalEulerAnglesHint: {x: -147.11, y: 0, z: -183.161}
+--- !u!1 &6377898715392792284
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3147655077138178001}
+  - component: {fileID: 3474371657232647033}
+  m_Layer: 0
+  m_Name: BUTT
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3147655077138178001
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6377898715392792284}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4094057905487427695}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &3474371657232647033
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6377898715392792284}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.79, y: 0.22, z: 0.4}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &6828179030465028018
 GameObject:
   m_ObjectHideFlags: 0
@@ -5586,6 +5641,7 @@ Transform:
   - {fileID: 535091365736048594}
   - {fileID: 2855269340690298224}
   - {fileID: 7415465791703383105}
+  - {fileID: 3147655077138178001}
   m_Father: {fileID: 2427716944078433029}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &220412893407384354
