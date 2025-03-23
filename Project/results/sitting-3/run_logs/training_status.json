@@ -1,0 +1,65 @@
+{
+    "PushBlock": {
+        "checkpoints": [
+            {
+                "steps": 263927,
+                "file_path": "results\\sitting-3\\PushBlock\\PushBlock-263927.onnx",
+                "reward": -1.6567877642810345,
+                "creation_time": 1742703719.3514717,
+                "auxillary_file_paths": [
+                    "results\\sitting-3\\PushBlock\\PushBlock-263927.pt"
+                ]
+            },
+            {
+                "steps": 340256,
+                "file_path": "results\\sitting-3\\PushBlock\\PushBlock-340256.onnx",
+                "reward": 1.9799487714190036,
+                "creation_time": 1742704108.2530525,
+                "auxillary_file_paths": [
+                    "results\\sitting-3\\PushBlock\\PushBlock-340256.pt"
+                ]
+            },
+            {
+                "steps": 398431,
+                "file_path": "results\\sitting-3\\PushBlock\\PushBlock-398431.onnx",
+                "reward": 3.1017502600120173,
+                "creation_time": 1742704567.8464448,
+                "auxillary_file_paths": [
+                    "results\\sitting-3\\PushBlock\\PushBlock-398431.pt"
+                ]
+            },
+            {
+                "steps": 499990,
+                "file_path": "results\\sitting-3\\PushBlock\\PushBlock-499990.onnx",
+                "reward": 2.691950856521726,
+                "creation_time": 1742704708.960974,
+                "auxillary_file_paths": [
+                    "results\\sitting-3\\PushBlock\\PushBlock-499990.pt"
+                ]
+            },
+            {
+                "steps": 500054,
+                "file_path": "results\\sitting-3\\PushBlock\\PushBlock-500054.onnx",
+                "reward": 2.691950856521726,
+                "creation_time": 1742704709.0246944,
+                "auxillary_file_paths": [
+                    "results\\sitting-3\\PushBlock\\PushBlock-500054.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 500054,
+            "file_path": "results\\sitting-3\\PushBlock.onnx",
+            "reward": 2.691950856521726,
+            "creation_time": 1742704709.0246944,
+            "auxillary_file_paths": [
+                "results\\sitting-3\\PushBlock\\PushBlock-500054.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.2.0.dev0",
+        "torch_version": "2.2.2+cu121"
+    }
+}

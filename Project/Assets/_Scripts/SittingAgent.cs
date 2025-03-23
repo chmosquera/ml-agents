@@ -1,51 +1,46 @@
-//Put this script on your blue cube.
-
 using System.Collections;
 using UnityEngine;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using UnityEngine.Serialization;
+using UnityEngine.UIElements;
 
 public class SittingAgent : Agent
 {
-    [Range(0,0.3f)]
-    public float movementFacingSmooth;
+    [Range(0, 0.3f)] public float movementFacingSmooth;
 
     [Header("Environment")]
     /// <summary>
     /// The ground. The bounds are used to spawn the elements.
     /// </summary>
     public GameObject ground;
+
     public GameObject area;
 
     /// <summary>
     /// The area bounds.
     /// </summary>
-    [HideInInspector]
-    public Bounds areaBounds;
+    [HideInInspector] public Bounds areaBounds;
 
     PushBlockSettings m_PushBlockSettings;
 
     /// <summary>
-    /// The goal to push the block to.
-    /// </summary>
-    public GameObject goal;
-
-    /// <summary>
-    /// The block to be pushed to the goal.
+    /// The block to be interacted with.
     /// </summary>
     public GameObject block;
 
     /// <summary>
-    /// Detects when the block touches the goal.
+    /// Detects when the agent touches the block.
     /// </summary>
-    [HideInInspector]
-    public SittableDetect sittableDetect;
+    [HideInInspector] public SittableDetect sittableDetect;
 
     public bool useVectorObs;
 
-    Rigidbody m_BlockRb;  //cached on initialization
-    Rigidbody m_AgentRb;  //cached on initialization
+    [Header("Debug")] public TMPro.TextMeshProUGUI rewardText; // Assign in inspector
+    public bool showDebugGUI = true;
+
+    Rigidbody m_BlockRb; //cached on initialization
+    Rigidbody m_AgentRb; //cached on initialization
     CapsuleCollider m_AgentCollider;
     Material m_GroundMaterial; //cached on Awake()
 
@@ -56,14 +51,14 @@ public class SittingAgent : Agent
 
     EnvironmentParameters m_ResetParams;
 
-    [Header("Internal Variables")]
-    private Vector3 positionTarget;
+    [Header("Internal Variables")] private Vector3 positionTarget;
     private Vector3 positionLast;
     private Vector3 positionVelocity;
     private Vector3 movementDelta;
     private Vector3 movementDeltaNormalized;
     private Vector3 movementDeltaVelocity;
     private Camera mainCam;
+    private Vector3 lastDistanceToBlock;
 
     protected override void Awake()
     {
@@ -84,6 +79,7 @@ public class SittingAgent : Agent
         {
             m_AgentCollider = gameObject.AddComponent<CapsuleCollider>();
         }
+
         // Cache the block rigidbody
         m_BlockRb = block.GetComponent<Rigidbody>();
         // Get the ground's bounds
@@ -126,22 +122,26 @@ public class SittingAgent : Agent
                 foundNewSpawnLocation = true;
             }
         }
+
         return randomSpawnPos;
     }
 
     /// <summary>
-    /// Called when the agent moves the block into the goal.
+    /// Called when the agent touches the block.
     /// </summary>
-    public void ScoredAGoal()
+    public void BlockTouched()
     {
-        // We use a reward of 5.
+        // We use a reward of 5 for touching the block
         AddReward(5f);
+
+        Debug.Log($"<color=yellow>{transform.parent.name}: Block touched! Reward: </color>" + GetCumulativeReward());
 
         // By marking an agent as done AgentReset() will be called automatically.
         EndEpisode();
 
-        // Swap ground material for a bit to indicate we scored.
+        // Swap ground material for a bit to indicate success.
         StartCoroutine(GoalScoredSwapGroundMaterial(m_PushBlockSettings.goalScoredMaterial, 0.5f));
+
     }
 
     /// <summary>
@@ -159,11 +159,7 @@ public class SittingAgent : Agent
     /// </summary>
     public void MoveAgent(ActionSegment<int> act)
     {
-        // var dirToGo = Vector3.zero;
-
         var action = act[0];
-
-        Debug.Log("MoveAgent::" + action + "");
 
         float horizontal = 0f;
         float vertical = 0f;
@@ -198,62 +194,20 @@ public class SittingAgent : Agent
         // Calculate movement direction
         Vector3 moveDirection = (cameraForward * vertical + cameraRight * horizontal).normalized;
 
-        // Calculate target position
-        Vector3 targetPosition = transform.position + moveDirection * m_PushBlockSettings.agentRunSpeed *
-            Time.fixedDeltaTime;
-
-        // Calculate angled raycast direction
-        Vector3 raycastDirection = Quaternion.Euler(45f, 0, 0) * moveDirection;
-
-        // Check for collisions with angled raycast
-        RaycastHit hit;
-        Vector3 rayStart = transform.position + Vector3.up * m_AgentCollider.height * 0.5f;
-
-        // Store debug information
-        bool hitSomething = Physics.Raycast(rayStart, raycastDirection, out hit, 10f, ground.layer);
-
-        if (hitSomething)
+        // Apply the movement force
+        if (moveDirection.magnitude > 0.1f)
         {
-            positionTarget = hit.point;
-            positionTarget.y = hit.point.y;
-        }
-        else
-        {
-            positionTarget = targetPosition;
-            positionTarget.y = transform.position.y;
+            m_AgentRb.AddForce(moveDirection * m_PushBlockSettings.agentRunSpeed,
+                ForceMode.VelocityChange);
         }
 
-
+        // Update the rotation and position tracking
         UpdateRootPosition();
         UpdateRootRotation();
-
-        //
-        m_AgentRb.AddForce(dirToGo * m_PushBlockSettings.agentRunSpeed,
-            ForceMode.VelocityChange);
     }
 
     public void UpdateRootPosition()
     {
-        // Vector3 targetPosition = transform.position + moveDirection * m_PushBlockSettings.agentRunSpeed * Time.fixedDeltaTime;
-        // Vector3 raycastDirection = Quaternion.Euler(45f, 0, 0) * moveDirection;
-
-        // RaycastHit hit;
-        // Vector3 rayStart = transform.position + Vector3.up * m_AgentCollider.height * 0.5f;
-        //
-        // bool hitSomething = Physics.Raycast(rayStart, raycastDirection, out hit, 10f, ground.layer);
-        //
-        // if (hitSomething)
-        // {
-        //     targetPosition = hit.point;
-        //     targetPosition.y = hit.point.y;
-        // }
-
-        // Vector3 positionSmooth = Vector3.SmoothDamp(transform.position, positionTarget, ref movementDeltaVelocity,
-            // m_PushBlockSettings.agentRunSpeed * Time.fixedDeltaTime);
-
-        // m_AgentRb.MovePosition(positionTarget);
-
-
         // Update movement delta from change in position
         movementDelta = transform.position - positionLast;
         movementDelta = Vector3.ProjectOnPlane(movementDelta, Vector3.up);
@@ -274,42 +228,73 @@ public class SittingAgent : Agent
         }
     }
 
+    private void Update()
+    {
+        // Update reward display if UI element is assigned
+        if (rewardText != null)
+        {
+            rewardText.text = $"Reward: {GetCumulativeReward():F2}";
+        }
+    }
+
+    private void OnGUI()
+    {
+        // if (showDebugGUI)
+        // {
+        //     GUI.Label(new Rect(10, 10, 200, 20), $"Reward: {GetCumulativeReward():F2}");
+        //     GUI.Label(new Rect(10, 30, 200, 20), $"Distance to Block: {Vector3.Distance(transform.position, block.transform.position):F2}");
+        //     GUI.Label(new Rect(10, 50, 200, 20), $"Steps: {StepCount}");
+        // }
+    }
+
     /// <summary>
     /// Called every step of the engine. Here the agent takes an action.
     /// </summary>
     public override void OnActionReceived(ActionBuffers actionBuffers)
-
     {
         // Move the agent using the action.
         MoveAgent(actionBuffers.DiscreteActions);
 
+        // Reward for getting closer to the block
+        Vector3 currentDistanceToBlock = block.transform.position - transform.position;
+        if (lastDistanceToBlock != Vector3.zero)
+        {
+            float movingCloserReward = lastDistanceToBlock.magnitude - currentDistanceToBlock.magnitude;
+            AddReward(movingCloserReward * 0.1f); // Small reward for progress
+        }
+
+        lastDistanceToBlock = currentDistanceToBlock;
+
         // Penalty given each step to encourage agent to finish task quickly.
         AddReward(-1f / MaxStep);
 
-
-        Debug.Log($"Current Reward: {GetCumulativeReward()}");
+        if (StepCount == MaxStep - 1)
+            Debug.Log($"<color=red>********* Reaching end of episode ********** {GetCumulativeReward()}</color>");
     }
 
-    // public override void Heuristic(in ActionBuffers actionsOut)
-    // {
-    //     var discreteActionsOut = actionsOut.DiscreteActions;
-    //     if (Input.GetKey(KeyCode.D))
-    //     {
-    //         discreteActionsOut[0] = 3;
-    //     }
-    //     else if (Input.GetKey(KeyCode.W))
-    //     {
-    //         discreteActionsOut[0] = 1;
-    //     }
-    //     else if (Input.GetKey(KeyCode.A))
-    //     {
-    //         discreteActionsOut[0] = 4;
-    //     }
-    //     else if (Input.GetKey(KeyCode.S))
-    //     {
-    //         discreteActionsOut[0] = 2;
-    //     }
-    // }
+
+    public override void Heuristic(in ActionBuffers actionsOut)
+    {
+        var discreteActionsOut = actionsOut.DiscreteActions;
+        discreteActionsOut[0] = 0; // Default to "do nothing"
+
+        if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
+        {
+            discreteActionsOut[0] = 1; // Forward
+        }
+        else if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
+        {
+            discreteActionsOut[0] = 2; // Backward
+        }
+        else if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
+        {
+            discreteActionsOut[0] = 3; // Left
+        }
+        else if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
+        {
+            discreteActionsOut[0] = 4; // Right
+        }
+    }
 
     /// <summary>
     /// Resets the block position and velocities.
@@ -341,8 +326,10 @@ public class SittingAgent : Agent
         m_AgentRb.linearVelocity = Vector3.zero;
         m_AgentRb.angularVelocity = Vector3.zero;
 
+        lastDistanceToBlock = Vector3.zero;
         SetResetParameters();
     }
+
 
     public void SetGroundMaterialFriction()
     {
