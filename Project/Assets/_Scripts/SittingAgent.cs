@@ -199,7 +199,9 @@ public class SittingAgent : Agent
 
         // We now give a reward of 10 for touching the block but DON'T end the episode
         float previousReward = GetCumulativeReward();
+#if ADD_REWARD
         AddReward(10f);
+#endif
         DebugLog("BlockTouched", $"Reward added: +10.0, Previous: {previousReward}, New: {GetCumulativeReward()}");
 
         Debug.Log($"<color=yellow>{transform.parent.name}: Block touched! Reward: </color>" + GetCumulativeReward());
@@ -227,13 +229,15 @@ public class SittingAgent : Agent
 
         // We use a reward of 50 for sitting on the block
         float previousReward = GetCumulativeReward();
+#if ADD_REWARD
         AddReward(50f);
+#endif
         DebugLog("ButtSatOnBlock", $"Reward added: +50.0, Previous: {previousReward}, New: {GetCumulativeReward()}");
 
         Debug.Log($"<color=green>{transform.parent.name}: Successfully sat on block! Reward: </color>" + GetCumulativeReward());
 
         // Now we end the episode on successful sitting
-        SafeEndEpisode("Butt sat on block - success!");
+        // SafeEndEpisode("Butt sat on block - success!");
 
         // Swap material for visual feedback
         StartCoroutine(GoalScoredSwapGroundMaterial(m_PushBlockSettings.goalScoredMaterial, 0.5f));
@@ -257,7 +261,9 @@ public class SittingAgent : Agent
         {
             // Apply negative reward for hitting a prop
             float previousReward = GetCumulativeReward();
+#if ADD_REWARD
             AddReward(-1f);
+#endif
             DebugLog("OnCollisionEnter", $"Prop collision penalty: -1.0, Previous: {previousReward}, New: {GetCumulativeReward()}");
 
             Debug.Log($"<color=red>{transform.parent.name}: Hit prop! Penalty applied. Reward: </color>" + GetCumulativeReward());
@@ -380,12 +386,14 @@ public class SittingAgent : Agent
             DebugLog("CheckIfRewardBelowThreshold", $"Reward below threshold ({currentReward} < -1.5)! Applying severe penalty.");
 
             float previousReward = GetCumulativeReward();
+#if ADD_REWARD
             AddReward(-10f);
+#endif
             DebugLog("CheckIfRewardBelowThreshold", $"Added penalty: -10.0, Previous: {previousReward}, New: {GetCumulativeReward()}");
 
             Debug.Log($"<color=red>{transform.parent.name}: Reward below threshold! Applying severe penalty.</color>");
 
-            SafeEndEpisode("Reward fell below threshold - applying penalty");
+            // SafeEndEpisode("Reward fell below threshold - applying penalty");
         }
     }
 
@@ -459,12 +467,12 @@ public class SittingAgent : Agent
         Vector3 moveDirection = (cameraForward * vertical + cameraRight * horizontal).normalized;
 
         // Apply the movement force
-        if (moveDirection.magnitude > 0.1f)
-        {
-            DebugLog("MoveAgent", $"Adding force: {moveDirection * m_PushBlockSettings.agentRunSpeed}");
-            m_AgentRb.AddForce(moveDirection * m_PushBlockSettings.agentRunSpeed,
-                ForceMode.VelocityChange);
-        }
+        // if (moveDirection.magnitude > 0.1f)
+        // {
+        //     DebugLog("MoveAgent", $"Adding force: {moveDirection * m_PushBlockSettings.agentRunSpeed}");
+        //     m_AgentRb.AddForce(moveDirection * m_PushBlockSettings.agentRunSpeed,
+        //         ForceMode.VelocityChange);
+        // }
 
         // SQUAT
         switch (squatAction)
@@ -568,7 +576,9 @@ public class SittingAgent : Agent
             Debug.Log($"<color=red>Far from chair - stand up reward: {squatReward:F3}, height: {pelvisHeightNormalized:F2}</color>");
         }
 
+#if ADD_REWARD
         AddReward(squatReward);
+#endif
     }
 
     private void Update()
@@ -629,7 +639,9 @@ public class SittingAgent : Agent
             // Apply the dynamic reward scaling based on which zone the agent is in
             float scaledReward = movingCloserReward * closerScalar;
             float prevReward = GetCumulativeReward();
+#if ADD_REWARD
             AddReward(scaledReward);
+#endif
 
             DebugLog("OnActionReceived",
                 $"Distance change: {movingCloserReward:F3}, Scaled reward: {scaledReward:F3}, " +
@@ -647,7 +659,9 @@ public class SittingAgent : Agent
         // Penalty given each step to encourage agent to finish task quickly.
         float stepPenalty = -1f / MaxStep;
         float previousReward = GetCumulativeReward();
+#if ADD_REWARD
         AddReward(stepPenalty);
+#endif
 
         DebugLog("OnActionReceived", $"Step penalty: {stepPenalty:F5}, Previous: {previousReward:F2}, New: {GetCumulativeReward():F2}");
 
@@ -717,21 +731,21 @@ public class SittingAgent : Agent
         area.transform.Rotate(new Vector3(0f, rotationAngle, 0f));
         DebugLog("OnEpisodeBegin", $"Area rotated by {rotationAngle} degrees");
 
-        ResetBlock();
+        // ResetBlock();
 
-        if (assetPlacer != null)
-        {
-            DebugLog("OnEpisodeBegin", "Randomizing asset placement");
-            assetPlacer.Randomize();
-        }
-        else
-        {
-            DebugLog("OnEpisodeBegin", "WARNING: assetPlacer is null!", LogType.Warning);
-        }
+        // if (assetPlacer != null)
+        // {
+        //     DebugLog("OnEpisodeBegin", "Randomizing asset placement");
+        //     assetPlacer.Randomize();
+        // }
+        // else
+        // {
+        //     DebugLog("OnEpisodeBegin", "WARNING: assetPlacer is null!", LogType.Warning);
+        // }
 
-        Vector3 agentSpawnPos = GetRandomSpawnPos();
-        DebugLog("OnEpisodeBegin", $"Setting agent position to {agentSpawnPos}");
-        transform.position = agentSpawnPos;
+        // Vector3 agentSpawnPos = GetRandomSpawnPos();
+        // DebugLog("OnEpisodeBegin", $"Setting agent position to {agentSpawnPos}");
+        // transform.position = agentSpawnPos;
 
         DebugLog("OnEpisodeBegin", "Resetting agent velocity");
         m_AgentRb.linearVelocity = Vector3.zero;
